@@ -90,9 +90,11 @@ public class XMLFormatConverter implements FormatConverter {
     private Marshaller getMarshaller(Object obj) {
         try {
             if (this.marshallers.containsKey(obj.getClass().getName())) {
+                System.out.println("GET FROM CACHE");
                 return this.marshallers.get(obj.getClass().getName());
             }
 
+            System.out.println("COMPUTE MARSHALLER");
             JAXBContext jaxbContext = JAXBContext.newInstance(obj.getClass());
             Marshaller marshaller = jaxbContext.createMarshaller();
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, this.prettyPrint);
