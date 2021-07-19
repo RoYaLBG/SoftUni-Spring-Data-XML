@@ -2,14 +2,22 @@ package com.example.objectmapping.models.dto;
 
 import com.google.gson.annotations.Expose;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
 import java.math.BigDecimal;
 
+@XmlRootElement(name = "employee")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class EmployeeCreateRequest extends BasicEmployeeDto {
 
     @Expose
+    @XmlElement
     private BigDecimal salary;
 
     @Expose
+    @XmlElement
     private String address;
 
     public BigDecimal getSalary() {
