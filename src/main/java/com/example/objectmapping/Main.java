@@ -5,16 +5,11 @@ import com.example.objectmapping.models.dto.EmployeeCreateResponse;
 import com.example.objectmapping.models.dto.ManagerCollection;
 import com.example.objectmapping.models.dto.ManagerDto;
 import com.example.objectmapping.services.EmployeeService;
-import com.google.gson.Gson;
+import com.example.objectmapping.services.util.FormatConverter;
+import com.example.objectmapping.services.util.FormatConverterFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Scanner;
 
@@ -23,28 +18,23 @@ public class Main implements CommandLineRunner {
 
     private final EmployeeService employeeService;
 
-    private final Gson gson;
+    private final FormatConverterFactory factory;
 
-    public Main(EmployeeService employeeService, Gson gson) {
+    public Main(EmployeeService employeeService, FormatConverterFactory factory) {
         this.employeeService = employeeService;
-        this.gson = gson;
+        this.factory = factory;
     }
 
     @Override
     public void run(String... args) throws Exception {
 
-        JAXBContext jaxbContext = JAXBContext.newInstance(ManagerDto.class, ManagerCollection.class, EmployeeCreateRequest.class, EmployeeCreateResponse.class);
-        Marshaller managerMarshaller = jaxbContext.createMarshaller();
-        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-        managerMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-
-
-//        JAXBContext jaxbContextAllManagers = JAXBContext.newInstance(ManagerCollection.class);
-//        Marshaller allManagerMarshaller = jaxbContextAllManagers.createMarshaller();
-//        allManagerMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-
-
         var sc = new Scanner(System.in);
+
+        System.out.println("Enter format type: ");
+        String formatType = sc.nextLine();
+
+        FormatConverter converter = this.factory.create(formatType);
+        converter.setPrettyPrint();
 
         var line = sc.nextLine();
 
@@ -55,86 +45,59 @@ public class Main implements CommandLineRunner {
                     Long id = Long.parseLong(cmdParts[1]);
                     ManagerDto managerById = this.employeeService.findOne(id);
 
-                    System.out.println(this.gson.toJson(managerById));
-
-                    managerMarshaller.marshal(managerById, System.out);
+                    System.out.println(converter.serialize(managerById));
                     break;
                 case "findAll":
                     List<ManagerDto> allManagers = this.employeeService.findAll();
-                    System.out.println(this.gson.toJson(allManagers));
-
-                    managerMarshaller.marshal(new ManagerCollection(allManagers), System.out);
-
+                    System.out.println(converter.serialize(new ManagerCollection(allManagers)));
                     break;
                 case "save":
-                    /*
-                      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-                      <employee first_name="..." last_name="...">
-                          <salary>2000</salary>
-                          <address>Mladost 4</address>
-                      </employee>
-                     *
-                     * <?xml version="1.0" encoding="UTF-8" standalone="yes"?><employee first_name="Ot" last_name="XML :)"><salary>2000</salary><address>Mladost 4</address></employee>
-                     */
-                    //<employee><firstName>...</firstName><lastName>....</lastName><salary>...</salary><address></address></employee>
                     String input = cmdParts[1];
 
                     EmployeeCreateRequest request
-                            = (EmployeeCreateRequest) unmarshaller.unmarshal(new ByteArrayInputStream(input.getBytes()));
-//                    EmployeeCreateRequest request = this.gson.fromJson(
-//                            input, // {"firstName": "...", ... }
-//                            EmployeeCreateRequest.class
-//                    );
-//
+                            = converter.deserialize(input, EmployeeCreateRequest.class);
+
+
                     EmployeeCreateResponse response = this.employeeService.save(
                             request
                     );
 
-                    System.out.println(this.gson.toJson(response));
-                    managerMarshaller.marshal(response, System.out);
+                    System.out.println(converter.serialize(response));
                     break;
                 case "save-from-file":
-//                    EmployeeCreateRequest fileRequest = this.gson.fromJson(
-//                            new FileReader(
-//                                    cmdParts[1]
-//                            ),
-//                            EmployeeCreateRequest.class
-//                    );
-
-                    EmployeeCreateRequest fileRequest = (EmployeeCreateRequest) unmarshaller.unmarshal(
-                            new FileReader(cmdParts[1])
+                    EmployeeCreateRequest fileRequest = converter.deserializeFromFile(
+                            cmdParts[1],
+                            EmployeeCreateRequest.class
                     );
 
                     EmployeeCreateResponse fileResponse = this.employeeService.save(
                             fileRequest
                     );
 
-                    System.out.println(this.gson.toJson(fileResponse));
-                    managerMarshaller.marshal(fileResponse, System.out);
+                    System.out.println(converter.serialize(fileResponse));
                     break;
                 case "findAll-to":
-                    try (FileWriter fw1 = new FileWriter(cmdParts[1] + ".json")) {
-                        List<ManagerDto> managers = this.employeeService.findAll();
-                        this.gson.toJson(
-                                managers,
-                                fw1
-                        );
+                    List<ManagerDto> managers = this.employeeService.findAll();
+                    converter.serialize(
+                            new ManagerCollection(managers),
+                            cmdParts[1] + "." + formatType
+                    );
 
-                        managerMarshaller.marshal(
-                                new ManagerCollection(managers),
-                                new File(cmdParts[1] + ".xml")
-                        );
-
-                        System.out.println("Written to file " + cmdParts[1]);
-                    }
+                    System.out.println("Written to file " + cmdParts[1]);
 
                     break;
-
+                case "change-format":
+                    converter = this.factory.create(cmdParts[1]);
+                    System.out.println("Format changed to " + cmdParts[1]);
+                    break;
+                case "pretty-print":
+                    converter.setPrettyPrint();
+                    System.out.println("Success");
+                    break;
             }
 
             line = sc.nextLine();
         }
-
 
 
 //
