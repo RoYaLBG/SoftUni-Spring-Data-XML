@@ -9,8 +9,7 @@ public class GsonConfig {
 
     @Bean
     public GsonBuilder gsonBuilder() {
-        GsonBuilder result = new GsonBuilder()
-                .excludeFieldsWithoutExposeAnnotation();
+        GsonBuilder result = new GsonBuilder();
 
         return result;
     }
